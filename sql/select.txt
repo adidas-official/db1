@@ -1,0 +1,36 @@
+-- Dotaz c.1
+SELECT id_kurz, nazev, datum, misto, sablona_id, lektor_id FROM kurz
+JOIN stav_k ON kurz.stav_id = stav_k.id_stav
+LEFT JOIN sablona ON kurz.sablona_id = sablona.id_sablona
+WHERE stav_k.popis = 'pripravovano' AND kurz.Datum > CURRENT_DATE
+test-> ;
+
+-- Dotaz c.2a
+SELECT jmeno, prijmeni FROM zajemce 
+JOIN ucast ON (zajemce.id_zajemce=ucast.zajemce_id)
+WHERE kurz_id=3 AND uhrada IS NOT NULL;
+
+-- Dotaz c.2b
+SELECT jmeno, prijmeni FROM zajemce
+JOIN ucast ON (zajemce.id_zajemce=ucast.zajemce_id)
+WHERE kurz_id=3 AND certifikat IS NOT NULL;
+
+-- Dotaz c.3
+
+-- Dotaz c.4
+SELECT * FROM (
+SELECT K.ID_KURZ,K.Datum, K.MISTO, S.Nazev, 
+(SELECT COUNT(*) from UCAST U WHERE U.KURZ_ID=K.ID_KURZ)
+POCET FROM KURZ K
+LEFT JOIN STAV_K KS on KS.ID_STAV=K.STAV_ID
+LEFT JOIN SABLONA S on S.ID_SABLONA=K.SABLONA_ID
+WHERE KS.POPIS='pripravovano') X
+WHERE POCET<5;
+
+-- Dotaz c.5
+SELECT lektor.jmeno, lektor.prijmeni, count(*)
+FROM lektor
+JOIN kurz ON kurz.lektor_id = lektor.id_lektor
+JOIN ucast ON kurz.id_kurz = ucast.kurz_id
+GROUP BY lektor.id_lektor
+ORDER BY count(*) DESC;

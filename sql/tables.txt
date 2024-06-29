@@ -1,0 +1,162 @@
+CREATE OR REPLACE FUNCTION fn_check_kompetence(fn_lektor_id INT, fn_sablona_id INT)
+RETURNS BOOL
+AS
+$$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM kompetence
+        JOIN lektor ON fn_lektor_id = lektor.id_lektor
+        JOIN sablona ON fn_sablona_id = sablona.id_sablona
+        WHERE fn_lektor_id = lektor.id_lektor
+        AND fn_sablona_id = sablona.id_sablona
+    );
+END;
+$$
+LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION fn_kurz_started(fn_kurz_id INT)
+RETURNS DATE
+AS
+$$
+DECLARE
+    kurz_date DATE;
+BEGIN
+    SELECT datum INTO kurz_date FROM kurz
+    WHERE fn_kurz_id = id_kurz;
+    RETURN kurz_date;
+END
+$$
+LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION fn_reserved(var_kurz_id INT, var_zajemce_id INT)
+RETURNS BOOL
+AS
+$$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM rezervace
+        WHERE zajemce_id = var_zajemce_id
+        AND var_kurz_id = var_kurz_id
+    );
+END
+$$
+LANGUAGE PLPGSQL;CREATE TABLE lektor (
+    id_lektor INT GENERATED ALWAYS AS IDENTITY,
+    jmeno VARCHAR(255) NOT NULL,
+    prijmeni VARCHAR(255) NOT NULL,
+    adresa VARCHAR(255) NOT NULL,
+    PRIMARY KEY(id_lektor)
+);
+
+ALTER TABLE lektor ADD CONSTRAINT uq_lektor
+    UNIQUE (jmeno, prijmeni, adresa);
+
+CREATE TABLE sablona (
+    id_sablona INT GENERATED ALWAYS AS IDENTITY,
+    nazev VARCHAR(255) NOT NULL,
+    PRIMARY KEY(id_sablona)
+);
+
+CREATE TABLE kompetence (
+    lektor_id INT NOT NULL,
+    sablona_id INT NOT NULL
+);
+
+ALTER TABLE kompetence ADD CONSTRAINT fk_lektor
+    Foreign Key (lektor_id) REFERENCES lektor(id_lektor)
+    ON DELETE CASCADE;
+
+ALTER TABLE kompetence
+    ADD CONSTRAINT fk_akreditace
+        Foreign Key (sablona_id) REFERENCES sablona(id_sablona)
+        ON DELETE CASCADE,
+    ADD CONSTRAINT uq_lektor_sablona
+        UNIQUE (lektor_id, sablona_id);
+
+-- STAV - ciselnik stavu; pripravovano, realizovano, zruseno
+CREATE Table stav_k (
+    id_stav INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    popis VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE kurz (
+    id_kurz INT GENERATED ALWAYS AS IDENTITY,
+    delka INT NOT NULL,
+    datum DATE NOT NULL,
+    misto VARCHAR(255) NOT NULL,
+    cena DECIMAL(8, 2) NOT NULL,
+    sablona_id INT NOT NULL DEFAULT 1,
+    lektor_id INT NOT NULL DEFAULT 1,
+    stav_id INT NOT NULL DEFAULT 1,
+    PRIMARY KEY(id_kurz)
+);
+
+ALTER TABLE kurz 
+    ADD CONSTRAINT fk_akreditace
+        FOREIGN KEY (sablona_id)
+        REFERENCES sablona(id_sablona)
+        ON DELETE SET DEFAULT, 
+    ADD CONSTRAINT fk_lektor
+        FOREIGN KEY (lektor_id)
+        REFERENCES lektor(id_lektor)
+        ON DELETE SET DEFAULT,
+    ADD CONSTRAINT fk_stav
+        FOREIGN KEY (stav_id)
+        REFERENCES stav_k(id_stav)
+        ON DELETE RESTRICT,
+    ADD CONSTRAINT ch_kompetence
+        CHECK ( fn_check_kompetence (lektor_id, sablona_id) ),
+    ADD CONSTRAINT ch_date
+        CHECK (datum > CURRENT_DATE);
+
+CREATE TABLE zajemce (
+    id_zajemce INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    jmeno VARCHAR(255) NOT NULL,
+    prijmeni VARCHAR(255) NOT NULL,
+    adresa VARCHAR(255) NOT NULL
+);
+
+ALTER TABLE zajemce 
+    ADD CONSTRAINT uq_customer
+        UNIQUE (jmeno, prijmeni, adresa);
+
+CREATE Table rezervace (
+    zajemce_id INT NOT NULL,
+    sablona_id INT NOT NULL,
+    datum DATE DEFAULT CURRENT_DATE
+);
+
+ALTER TABLE rezervace
+    ADD CONSTRAINT fk_zajemce
+        Foreign Key (zajemce_id)
+        REFERENCES zajemce(id_zajemce)
+        ON DELETE CASCADE,
+    ADD CONSTRAINT fk_sablona
+        Foreign Key (sablona_id)
+        REFERENCES sablona(id_sablona)
+        ON DELETE CASCADE,
+    ADD CONSTRAINT uq_reservation
+        UNIQUE (zajemce_id, sablona_id, datum);
+
+CREATE Table ucast (
+    kurz_id INT NOT NULL, 
+    zajemce_id INT NOT NULL,
+    certifikat VARCHAR(255) NOT NULL,
+    uhrada DATE NOT NULL
+); 
+
+ALTER TABLE ucast
+    ADD CONSTRAINT fk_kurz
+        Foreign Key (kurz_id)
+        REFERENCES kurz(id_kurz)
+        ON DELETE RESTRICT,
+    ADD CONSTRAINT fk_zajemce
+        Foreign Key (zajemce_id)
+        REFERENCES zajemce(id_zajemce)
+        ON DELETE CASCADE,
+    ADD CONSTRAINT uq_zajemce_kurz
+        UNIQUE (zajemce_id, kurz_id),
+    ADD CONSTRAINT ch_paid
+        CHECK ( uhrada < fn_kurz_started(kurz_id)
+);
+

@@ -1,0 +1,28 @@
+CREATE TABLE kurz (id_kurz INT GENERATED ALWAYS AS IDENTITY,
+	delka INT NOT NULL,
+	datum DATE NOT NULL,
+	misto VARCHAR(255) NOT NULL,
+	cena DECIMAL(8, 2) NOT NULL,
+	akreditace_id INT NOT NULL,
+	lektor_id INT NOT NULL,
+	stav_id INT NOT NULL DEFAULT 1,
+	PRIMARY KEY(id_kurz));
+ALTER TABLE kurz
+	ADD CONSTRAINT FK_Kurzakreditace
+		FOREIGN KEY (akreditace_id)
+		REFERENCES akreditace(id_akreditace),
+	ADD CONSTRAINT FK_KurzLektor
+		FOREIGN KEY (lektor_id)
+		REFERENCES lektor(id_lektor),
+	ADD CONSTRAINT FK_KurzStav
+		FOREIGN KEY (stav_id)
+		REFERENCES stav_k(id_stav);
+CREATE INDEX IFK_Kurzakreditace ON kurz(akreditace_id);
+CREATE INDEX IFK_KurzLektor ON kurz(lektor_id);
+CREATE INDEX IFK_KurzStav ON kurz(stav_id);
+
+CREATE Table stav_k (id_stav INT GENERATED ALWAYS AS IDENTITY,
+	popis VARCHAR(32) NOT NULL,
+	PRIMARY KEY(id_stav));
+INSERT INTO stav_k (id_stav, popis) OVERRIDING SYSTEM VALUE 
+	VALUES (1,'pripravovano'), (2,'realizovano') (3,'zruseno');

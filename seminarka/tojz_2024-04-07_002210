@@ -1,0 +1,1040 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: fn_check_kompetence(integer, integer); Type: FUNCTION; Schema: public; Owner: dev
+--
+
+CREATE FUNCTION public.fn_check_kompetence(fn_lektor_id integer, fn_sablona_id integer) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM kompetence
+        JOIN lektor ON fn_lektor_id = lektor.id_lektor
+        JOIN sablona ON fn_sablona_id = sablona.id_sablona
+        WHERE fn_lektor_id = lektor.id_lektor
+        AND fn_sablona_id = sablona.id_sablona
+    );
+END;
+$$;
+
+
+ALTER FUNCTION public.fn_check_kompetence(fn_lektor_id integer, fn_sablona_id integer) OWNER TO dev;
+
+--
+-- Name: fn_date_kurz(date, integer); Type: FUNCTION; Schema: public; Owner: dev
+--
+
+CREATE FUNCTION public.fn_date_kurz(fn_date date, fn_kurz_id integer) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 from kurz
+        WHERE fn_kurz_id = id_kurz
+        AND fn_date = datum
+    );
+END
+$$;
+
+
+ALTER FUNCTION public.fn_date_kurz(fn_date date, fn_kurz_id integer) OWNER TO dev;
+
+--
+-- Name: fn_kurz_started(integer); Type: FUNCTION; Schema: public; Owner: dev
+--
+
+CREATE FUNCTION public.fn_kurz_started(fn_kurz_id integer) RETURNS date
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    kurz_date DATE;
+BEGIN
+    SELECT datum INTO kurz_date FROM kurz
+    WHERE fn_kurz_id = id_kurz;
+    RETURN kurz_date;
+END
+$$;
+
+
+ALTER FUNCTION public.fn_kurz_started(fn_kurz_id integer) OWNER TO dev;
+
+--
+-- Name: fn_reserved(integer, integer); Type: FUNCTION; Schema: public; Owner: dev
+--
+
+CREATE FUNCTION public.fn_reserved(var_kurz_id integer, var_zajemce_id integer) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM rezervace
+        WHERE zajemce_id = var_zajemce_id
+        AND kurz_id = var_kurz_id
+    );
+END
+$$;
+
+
+ALTER FUNCTION public.fn_reserved(var_kurz_id integer, var_zajemce_id integer) OWNER TO dev;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: kompetence; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.kompetence (
+    lektor_id integer NOT NULL,
+    sablona_id integer NOT NULL
+);
+
+
+ALTER TABLE public.kompetence OWNER TO dev;
+
+--
+-- Name: kurz; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.kurz (
+    id_kurz integer NOT NULL,
+    delka integer NOT NULL,
+    datum date NOT NULL,
+    misto character varying(255) NOT NULL,
+    cena numeric(8,2) NOT NULL,
+    sablona_id integer DEFAULT 1 NOT NULL,
+    lektor_id integer DEFAULT 1 NOT NULL,
+    stav_id integer DEFAULT 1 NOT NULL,
+    CONSTRAINT ch_date CHECK ((datum > CURRENT_DATE)),
+    CONSTRAINT ch_kompetence CHECK (public.fn_check_kompetence(lektor_id, sablona_id))
+);
+
+
+ALTER TABLE public.kurz OWNER TO dev;
+
+--
+-- Name: kurz_id_kurz_seq; Type: SEQUENCE; Schema: public; Owner: dev
+--
+
+ALTER TABLE public.kurz ALTER COLUMN id_kurz ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.kurz_id_kurz_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: lektor; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.lektor (
+    id_lektor integer NOT NULL,
+    jmeno character varying(255) NOT NULL,
+    prijmeni character varying(255) NOT NULL,
+    adresa character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.lektor OWNER TO dev;
+
+--
+-- Name: lektor_id_lektor_seq; Type: SEQUENCE; Schema: public; Owner: dev
+--
+
+ALTER TABLE public.lektor ALTER COLUMN id_lektor ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.lektor_id_lektor_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: rezervace; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.rezervace (
+    zajemce_id integer NOT NULL,
+    kurz_id integer NOT NULL,
+    datum date DEFAULT CURRENT_DATE
+);
+
+
+ALTER TABLE public.rezervace OWNER TO dev;
+
+--
+-- Name: sablona; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.sablona (
+    id_sablona integer NOT NULL,
+    nazev character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.sablona OWNER TO dev;
+
+--
+-- Name: sablona_id_sablona_seq; Type: SEQUENCE; Schema: public; Owner: dev
+--
+
+ALTER TABLE public.sablona ALTER COLUMN id_sablona ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.sablona_id_sablona_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: stav_k; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.stav_k (
+    id_stav integer NOT NULL,
+    popis character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.stav_k OWNER TO dev;
+
+--
+-- Name: stav_k_id_stav_seq; Type: SEQUENCE; Schema: public; Owner: dev
+--
+
+ALTER TABLE public.stav_k ALTER COLUMN id_stav ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.stav_k_id_stav_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: ucast; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.ucast (
+    kurz_id integer NOT NULL,
+    zajemce_id integer NOT NULL,
+    certifikat character varying(255) NOT NULL,
+    uhrada date NOT NULL,
+    CONSTRAINT ch_paid CHECK ((uhrada < public.fn_kurz_started(kurz_id))),
+    CONSTRAINT ch_reserved CHECK (public.fn_reserved(kurz_id, zajemce_id))
+);
+
+
+ALTER TABLE public.ucast OWNER TO dev;
+
+--
+-- Name: zajemce; Type: TABLE; Schema: public; Owner: dev
+--
+
+CREATE TABLE public.zajemce (
+    id_zajemce integer NOT NULL,
+    jmeno character varying(255) NOT NULL,
+    prijmeni character varying(255) NOT NULL,
+    adresa character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.zajemce OWNER TO dev;
+
+--
+-- Name: zajemce_id_zajemce_seq; Type: SEQUENCE; Schema: public; Owner: dev
+--
+
+ALTER TABLE public.zajemce ALTER COLUMN id_zajemce ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.zajemce_id_zajemce_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Data for Name: kompetence; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.kompetence (lektor_id, sablona_id) FROM stdin;
+2	5
+2	2
+2	10
+2	7
+2	9
+2	11
+3	8
+3	4
+3	6
+3	5
+3	3
+3	9
+4	10
+4	11
+4	5
+4	6
+4	3
+4	8
+5	3
+5	9
+5	8
+5	4
+6	4
+6	9
+7	3
+7	6
+8	2
+8	10
+9	3
+9	2
+9	6
+9	7
+10	4
+10	10
+10	6
+11	9
+11	8
+11	11
+11	2
+12	8
+12	4
+12	2
+12	7
+13	7
+13	10
+13	3
+13	11
+13	4
+13	9
+14	8
+14	2
+15	7
+15	4
+15	3
+15	5
+15	11
+15	10
+16	10
+16	4
+17	5
+17	3
+18	2
+18	5
+18	8
+19	2
+19	9
+19	4
+19	10
+20	5
+20	10
+21	7
+21	3
+\.
+
+
+--
+-- Data for Name: kurz; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.kurz (id_kurz, delka, datum, misto, cena, sablona_id, lektor_id, stav_id) FROM stdin;
+3	110	2024-06-04	Zlin	20400.00	11	2	3
+4	100	2024-06-04	Karlovy Vary	20100.00	9	2	1
+5	100	2024-06-04	Brno	17800.00	5	2	3
+6	110	2024-06-04	Brno	19300.00	9	2	1
+7	140	2024-06-04	Karlovy Vary	24800.00	10	2	2
+8	160	2024-06-08	Zlin	29500.00	8	3	2
+9	120	2024-06-08	Brno	17300.00	4	3	3
+10	130	2024-06-08	Praha	23700.00	3	3	1
+11	140	2024-06-08	Karlovy Vary	22800.00	8	3	2
+12	190	2024-06-08	Ostrava	25900.00	8	3	3
+13	190	2024-07-20	Brno	27100.00	5	4	2
+14	150	2024-07-20	Karlovy Vary	18500.00	10	4	1
+15	140	2024-07-20	Karlovy Vary	29500.00	6	4	1
+16	140	2024-07-20	Praha	16000.00	6	4	3
+17	180	2024-05-07	Zlin	24600.00	9	5	2
+18	140	2024-05-07	Brno	24900.00	3	5	1
+19	140	2024-05-07	Zlin	29200.00	4	5	1
+20	160	2024-05-07	Ostrava	18900.00	9	5	3
+21	200	2024-05-07	Zlin	24900.00	8	5	2
+22	120	2025-01-15	Praha	29000.00	9	6	2
+23	170	2025-01-15	Zlin	19200.00	9	6	3
+24	120	2025-01-15	Ostrava	22200.00	9	6	1
+25	150	2024-06-20	Ostrava	22900.00	6	7	2
+26	170	2024-06-20	Karlovy Vary	21300.00	3	7	2
+27	150	2024-05-23	Ostrava	23200.00	10	8	2
+28	120	2024-05-23	Zlin	16100.00	2	8	2
+29	110	2024-05-23	Zlin	15600.00	10	8	2
+30	190	2024-11-08	Karlovy Vary	20100.00	2	9	2
+31	180	2024-11-08	Ostrava	16900.00	6	9	1
+32	130	2024-10-02	Karlovy Vary	26800.00	10	10	3
+33	160	2024-10-02	Zlin	19200.00	4	10	2
+34	200	2024-10-02	Ostrava	23300.00	4	10	2
+35	110	2024-10-02	Ostrava	21900.00	10	10	3
+36	150	2024-11-25	Karlovy Vary	19200.00	8	11	1
+37	150	2024-11-25	Brno	24500.00	2	11	2
+38	200	2024-11-25	Karlovy Vary	15000.00	9	11	1
+39	170	2024-11-25	Praha	18300.00	11	11	3
+40	180	2024-09-06	Zlin	22000.00	4	12	1
+41	200	2024-09-06	Ostrava	17900.00	4	12	2
+42	140	2024-09-06	Zlin	22300.00	8	12	3
+43	140	2024-09-06	Karlovy Vary	16300.00	2	12	3
+44	170	2024-09-06	Praha	29600.00	8	12	3
+45	120	2024-09-21	Karlovy Vary	20600.00	3	13	1
+46	160	2024-09-21	Karlovy Vary	18900.00	9	13	1
+47	200	2024-09-21	Ostrava	19000.00	4	13	2
+48	160	2024-09-21	Ostrava	21900.00	4	13	2
+49	110	2024-09-21	Brno	18300.00	10	13	1
+50	160	2024-09-21	Ostrava	27200.00	11	13	3
+51	160	2024-12-22	Karlovy Vary	30000.00	8	14	1
+52	180	2024-12-22	Praha	26700.00	8	14	2
+53	130	2024-05-31	Brno	16400.00	3	15	2
+54	170	2024-05-31	Ostrava	27100.00	3	15	2
+55	150	2024-05-31	Ostrava	23800.00	11	15	2
+56	100	2024-05-31	Karlovy Vary	15400.00	11	15	3
+57	150	2024-05-31	Zlin	16600.00	3	15	2
+58	100	2024-05-31	Zlin	28300.00	5	15	3
+59	120	2024-12-19	Ostrava	18500.00	10	16	1
+60	180	2024-12-19	Karlovy Vary	27600.00	4	16	2
+61	200	2024-10-01	Ostrava	23600.00	5	17	1
+62	120	2024-10-01	Zlin	25900.00	5	17	2
+63	100	2024-10-01	Ostrava	25400.00	3	17	3
+64	190	2024-07-05	Brno	16900.00	5	18	2
+65	150	2024-07-05	Zlin	15500.00	8	18	1
+66	100	2024-07-05	Praha	26100.00	5	18	2
+67	170	2024-11-21	Ostrava	16500.00	4	19	1
+68	160	2024-11-21	Zlin	28500.00	2	19	1
+69	200	2024-11-21	Karlovy Vary	18300.00	4	19	1
+70	180	2024-10-08	Zlin	25600.00	10	20	2
+71	150	2024-10-08	Ostrava	22600.00	10	20	1
+72	150	2024-10-08	Karlovy Vary	25900.00	10	20	3
+73	180	2024-05-14	Zlin	15100.00	3	21	3
+74	130	2024-05-14	Karlovy Vary	26200.00	7	21	3
+\.
+
+
+--
+-- Data for Name: lektor; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.lektor (id_lektor, jmeno, prijmeni, adresa) FROM stdin;
+1	bude	upresneno	-
+2	Anna	Koudelka	U Silnice 2/332 406 36 Hradec Králové
+3	Klára	Berková	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+4	Jitka	Slavík	N. A. Někrasova 430 50 Tábor
+5	Vlasta	Ečerová	U Silnice 9/413 719 38 Kroměříž
+6	Eva	Kučera	Kukelská 65670 Uherské Hradiště
+7	Stanislav	Matoušek	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+8	Anežka	Polcrová	Nad Klikovkou 287 29 Sokolov
+9	Ludmila	Černíková	N. A. Někrasova 430 50 Tábor
+10	Danuše	Lorenzová	Kukelská 65670 Uherské Hradiště
+11	Barbora	Linková	Radbuzská 8 70129 Kolín
+12	bude	upresneno	-
+13	Zdeňka	Polcrová	Rozkošného 9 06003 Děčín
+14	Ilona	Hůlková	Rozkošného 9 06003 Děčín
+15	Vladislav	Černíková	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+16	Šárka	Meyerová	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+17	Lenka	Vrba	Rozkošného 9 06003 Děčín
+18	Renata	Žák	Hrachovská 82 Karlovarský kraj 91899 Děčín
+19	Zdeněk	Nesslerová	U Silnice 2/332 406 36 Hradec Králové
+20	Filip	Bezděkovská	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+21	Renata	Matoušek	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+22	Zlata	Šilar	Pohledná Jihomoravský kraj 29446 Ústí nad Labem
+\.
+
+
+--
+-- Data for Name: rezervace; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.rezervace (zajemce_id, kurz_id, datum) FROM stdin;
+36	61	2024-04-06
+19	3	2024-04-06
+35	72	2024-04-06
+57	18	2024-04-06
+79	74	2024-04-06
+13	27	2024-04-06
+4	35	2024-04-06
+96	43	2024-04-06
+35	45	2024-04-06
+44	9	2024-04-06
+77	73	2024-04-06
+38	34	2024-04-06
+34	14	2024-04-06
+73	69	2024-04-06
+79	11	2024-04-06
+85	34	2024-04-06
+3	16	2024-04-06
+91	28	2024-04-06
+50	74	2024-04-06
+35	25	2024-04-06
+26	60	2024-04-06
+98	73	2024-04-06
+67	66	2024-04-06
+73	45	2024-04-06
+3	10	2024-04-06
+72	9	2024-04-06
+69	74	2024-04-06
+91	11	2024-04-06
+63	35	2024-04-06
+21	49	2024-04-06
+67	46	2024-04-06
+48	51	2024-04-06
+28	38	2024-04-06
+54	4	2024-04-06
+67	48	2024-04-06
+22	53	2024-04-06
+21	64	2024-04-06
+46	17	2024-04-06
+22	34	2024-04-06
+93	52	2024-04-06
+61	7	2024-04-06
+41	62	2024-04-06
+14	54	2024-04-06
+92	7	2024-04-06
+95	62	2024-04-06
+95	9	2024-04-06
+28	14	2024-04-06
+89	36	2024-04-06
+85	30	2024-04-06
+42	58	2024-04-06
+39	60	2024-04-06
+79	54	2024-04-06
+94	39	2024-04-06
+85	59	2024-04-06
+78	63	2024-04-06
+64	13	2024-04-06
+50	9	2024-04-06
+81	16	2024-04-06
+98	63	2024-04-06
+65	62	2024-04-06
+25	71	2024-04-06
+85	72	2024-04-06
+95	32	2024-04-06
+86	44	2024-04-06
+36	63	2024-04-06
+1	36	2024-04-06
+77	40	2024-04-06
+69	27	2024-04-06
+28	26	2024-04-06
+33	55	2024-04-06
+46	70	2024-04-06
+71	49	2024-04-06
+42	45	2024-04-06
+56	64	2024-04-06
+89	66	2024-04-06
+27	17	2024-04-06
+92	3	2024-04-06
+41	29	2024-04-06
+72	12	2024-04-06
+45	14	2024-04-06
+6	71	2024-04-06
+11	60	2024-04-06
+29	38	2024-04-06
+69	37	2024-04-06
+49	42	2024-04-06
+28	74	2024-04-06
+29	5	2024-04-06
+10	69	2024-04-06
+7	25	2024-04-06
+77	32	2024-04-06
+27	58	2024-04-06
+84	55	2024-04-06
+97	46	2024-04-06
+27	66	2024-04-06
+25	43	2024-04-06
+66	15	2024-04-06
+16	23	2024-04-06
+75	39	2024-04-06
+79	27	2024-04-06
+17	13	2024-04-06
+\.
+
+
+--
+-- Data for Name: sablona; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.sablona (id_sablona, nazev) FROM stdin;
+1	Bude upresneno
+2	html
+3	css
+4	php
+5	javascript
+6	python
+7	c++
+8	sql
+9	TCP/IP
+10	social networks
+11	photo editing
+\.
+
+
+--
+-- Data for Name: stav_k; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.stav_k (id_stav, popis) FROM stdin;
+1	pripravovano
+2	realizovano
+3	zruseno
+\.
+
+
+--
+-- Data for Name: ucast; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.ucast (kurz_id, zajemce_id, certifikat, uhrada) FROM stdin;
+12	72	2024-06-08-certifikat.pdf	2024-06-03
+9	50	2024-06-08-certifikat.pdf	2024-06-05
+49	71	2024-09-21-certifikat.pdf	2024-09-17
+58	42	2024-05-31-certifikat.pdf	2024-05-26
+11	79	2024-06-08-certifikat.pdf	2024-05-27
+62	95	2024-10-01-certifikat.pdf	2024-09-09
+64	21	2024-07-05-certifikat.pdf	2024-06-29
+30	85	2024-11-08-certifikat.pdf	2024-10-14
+69	10	2024-11-21-certifikat.pdf	2024-10-22
+16	3	2024-07-20-certifikat.pdf	2024-07-14
+3	19	2024-06-04-certifikat.pdf	2024-05-13
+72	35	2024-10-08-certifikat.pdf	2024-09-12
+43	25	2024-09-06-certifikat.pdf	2024-08-09
+25	7	2024-06-20-certifikat.pdf	2024-06-09
+18	57	2024-05-07-certifikat.pdf	2024-04-18
+14	34	2024-07-20-certifikat.pdf	2024-06-22
+34	38	2024-10-02-certifikat.pdf	2024-09-19
+63	98	2024-10-01-certifikat.pdf	2024-09-10
+54	14	2024-05-31-certifikat.pdf	2024-05-08
+17	27	2024-05-07-certifikat.pdf	2024-04-20
+42	49	2024-09-06-certifikat.pdf	2024-08-27
+73	98	2024-05-14-certifikat.pdf	2024-04-26
+13	17	2024-07-20-certifikat.pdf	2024-06-25
+7	61	2024-06-04-certifikat.pdf	2024-05-15
+39	75	2024-11-25-certifikat.pdf	2024-11-22
+66	67	2024-07-05-certifikat.pdf	2024-06-27
+29	41	2024-05-23-certifikat.pdf	2024-04-25
+74	28	2024-05-14-certifikat.pdf	2024-04-24
+7	92	2024-06-04-certifikat.pdf	2024-05-21
+35	63	2024-10-02-certifikat.pdf	2024-09-07
+\.
+
+
+--
+-- Data for Name: zajemce; Type: TABLE DATA; Schema: public; Owner: dev
+--
+
+COPY public.zajemce (id_zajemce, jmeno, prijmeni, adresa) FROM stdin;
+1	Mykhaylo	Bezděkovská	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+2	Mykhaylo	Novotná	Kaňkova 8/92 45880 Děčín
+3	Simona	Kadlecová	Rozkošného 9 06003 Děčín
+4	Marta	Hamplová	Nad Nuslemi 27/737 66290 Příbram
+5	Jakub	Literová	Na Jezerce 59956 Vsetín
+6	Jitka	Hubička	Na Úbočí 48/58 24216 Prostějov
+7	Oldřich	Dolejší	Rozkošného 9 06003 Děčín
+8	Jarmila	Hubička	Radbuzská 8 70129 Kolín
+9	Markéta	Ečerová	Na Jezerce 59956 Vsetín
+10	Věra	Novák	Kaňkova 8/92 45880 Děčín
+11	Iva	Berková	Kaňkova 8/92 45880 Děčín
+12	Božena	Ečerová	K Návsi 98/33 256 37 Ostrava
+13	Renata	Fučíková	Ruzyňská 77/393 14949 Jihlava
+14	Jana	Kloud	N. A. Někrasova 430 50 Tábor
+15	Josef	Berková	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+16	Lenka	Hora	Rozkošného 9 06003 Děčín
+17	Zdeňka	Šturmová	Antonínská 9 89334 Vsetín
+18	Petr	Hanušová	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+19	Šárka	Dufková	Široká 15/353 933 54 Litoměřice
+20	Jan	Fajstlová	Mečíková 6/442 911 12 Karlovy Vary
+21	Miloslava	Brichová	Nad Nuslemi 27/737 66290 Příbram
+22	David	Janatka	Nad Nuslemi 27/737 66290 Příbram
+23	Josef	Vrba	Stadionová 681 53 Litoměřice
+24	Petr	Hamplová	Radbuzská 8 70129 Kolín
+25	Lukáš	Navrátil	Do Vršku 35/612 559 15 Jablonec nad Nisou
+26	Adéla	Procházková	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+27	Božena	Meyerová	Nad Nuslemi 27/737 66290 Příbram
+28	Karel	Navrátil	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+29	Petra	Dufková	N. A. Někrasova 430 50 Tábor
+30	Gabriela	Bolfová	Antonínská 9 89334 Vsetín
+31	Vladimír	Kloud	Stadionová 681 53 Litoměřice
+32	Miroslav	Kučera	U Silnice 2/332 406 36 Hradec Králové
+33	Lenka	Hénik	Nad Klikovkou 287 29 Sokolov
+34	Iveta	Palánová	U Silnice 9/413 719 38 Kroměříž
+35	Barbora	Koudelka	Stadionová 681 53 Litoměřice
+36	Radim	Šlajerová	Pohledná Jihomoravský kraj 29446 Ústí nad Labem
+37	Rudolf	Svoboda	Nad Nuslemi 27/737 66290 Příbram
+38	Josef	Žák	U Silnice 2/332 406 36 Hradec Králové
+39	Radim	Chromá	U Silnice 2/332 406 36 Hradec Králové
+40	David	Majerová	U Silnice 2/332 406 36 Hradec Králové
+41	Veronika	Rybárová	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+42	Petra	Kalandříková	U Silnice 2/332 406 36 Hradec Králové
+43	Anna	Skopečková	Do Vršku 35/612 559 15 Jablonec nad Nisou
+44	Blanka	Kloud	Široká 15/353 933 54 Litoměřice
+45	Richard	Bolfová	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+46	Veronika	Konečný	Nad Klikovkou 287 29 Sokolov
+47	Zdeňka	Kabelka	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+48	Július	Svoboda	Kukelská 65670 Uherské Hradiště
+49	Miloslav	Hora	Na Jezerce 59956 Vsetín
+50	Zdeněk	Vrba	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+51	Roman	Chromá	Do Vršku 35/612 559 15 Jablonec nad Nisou
+52	Jaroslava	Zhejbal	Kukelská 65670 Uherské Hradiště
+53	Zlata	Pokorný	U Silnice 9/413 719 38 Kroměříž
+54	Miroslav	Černík	Antonínská 9 89334 Vsetín
+55	Iveta	Dobrovolná	K Návsi 98/33 256 37 Ostrava
+56	Jaroslava	Vančo	Ruzyňská 77/393 14949 Jihlava
+57	Markéta	Šturmová	Rozkošného 9 06003 Děčín
+58	Arnošt	Žák	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+59	Pavel	Polcrová	N. A. Někrasova 430 50 Tábor
+60	Miluše	Bohušová	K Návsi 98/33 256 37 Ostrava
+61	Božena	Brunclíková	Stadionová 681 53 Litoměřice
+62	Arnošt	Šturmová	Na Úbočí 48/58 24216 Prostějov
+63	Jiřina	Žaludová	Nad Nuslemi 27/737 66290 Příbram
+64	Eva	Lorenzová	Kukelská 65670 Uherské Hradiště
+65	Evženie	Polcrová	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+66	Jiří	Ečerová	Nad Klikovkou 287 29 Sokolov
+67	Alena	Dobrovolná	Hrachovská 82 Karlovarský kraj 91899 Děčín
+68	Veronika	Tretter	Ruzyňská 77/393 14949 Jihlava
+69	Alena	Nesslerová	N. A. Někrasova 430 50 Tábor
+70	Milan	Konečný	Do Vršku 35/612 559 15 Jablonec nad Nisou
+71	Leoš	Stojka	Mečíková 6/442 911 12 Karlovy Vary
+72	Karel	Tretter	N. A. Někrasova 430 50 Tábor
+73	Blanka	Novotná	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+74	Zlata	Konečný	Široká 15/353 933 54 Litoměřice
+75	Adéla	Tománková	Na Jezerce 59956 Vsetín
+76	Radim	Hubička	U Kamýku 17868 Liberec
+77	Roman	Konečný	Hrachovská 82 Karlovarský kraj 91899 Děčín
+78	Marie	Svoboda	Kukelská 65670 Uherské Hradiště
+79	Alena	Skopečková	U Silnice 2/332 406 36 Hradec Králové
+80	Karel	Rybárová	Do Vršku 35/612 559 15 Jablonec nad Nisou
+81	Alena	Rounová	Kaňkova 8/92 45880 Děčín
+82	Stanislav	Šlajerová	Radbuzská 8 70129 Kolín
+83	Šárka	Procházková	Kaňkova 8/92 45880 Děčín
+84	Jaroslava	Novotná	Pohledná Jihomoravský kraj 29446 Ústí nad Labem
+85	Lukáš	Dolejší	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+86	Roman	Koudelka	Antonínská 9 89334 Vsetín
+87	Zlata	Šusta	Mečíková 6/442 911 12 Karlovy Vary
+88	Jindřich	Fučíková	Do Vršku 35/612 559 15 Jablonec nad Nisou
+89	Tomáš	Kabelka	Rozkošného 9 06003 Děčín
+90	Jaroslav	Dolejší	Kukelská 65670 Uherské Hradiště
+91	Naděžda	Berková	Hrachovská 82 Karlovarský kraj 91899 Děčín
+92	Josef	Katona	Do Vršku 35/612 559 15 Jablonec nad Nisou
+93	Marcela	Hamplová	U Kamýku 17868 Liberec
+94	Zdeněk	Bohušová	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+95	Evženie	Žaludová	Kaňkova 8/92 45880 Děčín
+96	Mykhaylo	Žaludová	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+97	Renata	Hora	Nad Klikovkou 287 29 Sokolov
+98	Věra	Ečerová	U Silnice 2/332 406 36 Hradec Králové
+99	Miroslav	Procházková	Pohledná Jihomoravský kraj 29446 Ústí nad Labem
+100	Šárka	Vrba	Do Vršku 35/612 559 15 Jablonec nad Nisou
+101	Monika	Ečerová	Hrachovská 82 Karlovarský kraj 91899 Děčín
+102	Jana	Ečerová	Antonínská 9 89334 Vsetín
+103	Tomáš	Písařík	Stadionová 681 53 Litoměřice
+104	Tomáš	Černík	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+105	Iva	Literová	Hrachovská 82 Karlovarský kraj 91899 Děčín
+106	Lucie	Kotorová	U Silnice 9/413 719 38 Kroměříž
+107	Martina	Nguyenová	Nad Klikovkou 287 29 Sokolov
+108	Jindřich	Písařík	U Silnice 9/413 719 38 Kroměříž
+109	Petra	Müllerová	Nad Nuslemi 27/737 66290 Příbram
+110	Jakub	Vařeková	U Silnice 2/332 406 36 Hradec Králové
+111	Barbora	Tománková	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+112	Tereza	Španinger	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+113	Jakub	Hůlková	U Silnice 2/332 406 36 Hradec Králové
+114	Pavlína	Wimmer	U Silnice 2/332 406 36 Hradec Králové
+115	Antonín	Černíková	Ruzyňská 77/393 14949 Jihlava
+116	Kateřina	Černík	Pohledná Jihomoravský kraj 29446 Ústí nad Labem
+117	Július	Müller	Nad Klikovkou 287 29 Sokolov
+118	Vlasta	Vařeková	U Silnice 9/413 719 38 Kroměříž
+119	Barbora	Látal	U Silnice 2/332 406 36 Hradec Králové
+120	Milan	Dufková	Hrachovská 82 Karlovarský kraj 91899 Děčín
+121	Július	Kučera	U Kamýku 17868 Liberec
+122	Miloš	Hénik	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+123	Anežka	Katona	U Silnice 9/413 719 38 Kroměříž
+124	Kateřina	Hubička	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+125	Zuzana	Bolfová	Antonínská 9 89334 Vsetín
+126	Antonín	Šusta	Radbuzská 8 70129 Kolín
+127	Miloš	Müllerová	Kukelská 65670 Uherské Hradiště
+128	Žaneta	Wildung	Široká 15/353 933 54 Litoměřice
+129	Lukáš	Černíková	Nad Nuslemi 27/737 66290 Příbram
+130	Iva	Hůlková	Nad Klikovkou 287 29 Sokolov
+131	Iveta	Janatka	U Silnice 9/413 719 38 Kroměříž
+132	Evženie	Majerová	Rozkošného 9 06003 Děčín
+133	František	Svoboda	N. A. Někrasova 430 50 Tábor
+134	Rudolf	Müllerová	Na Úbočí 48/58 24216 Prostějov
+135	Žaneta	Kloud	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+136	Vlasta	Bolfová	Rozkošného 9 06003 Děčín
+137	Vlasta	Kloud	Mečíková 6/442 911 12 Karlovy Vary
+138	Ilona	Koudelka	U Silnice 2/332 406 36 Hradec Králové
+139	Naděžda	Linková	U Silnice 2/332 406 36 Hradec Králové
+140	Božena	Pokorný	N. A. Někrasova 430 50 Tábor
+141	Jitka	Španinger	U Silnice 9/413 719 38 Kroměříž
+142	Gabriela	Svoboda	Rozkošného 9 06003 Děčín
+143	Ladislav	Hlobilová	Kukelská 65670 Uherské Hradiště
+144	Simona	Vrba	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+145	Helena	Jeklová	Do Vršku 35/612 559 15 Jablonec nad Nisou
+146	Jitka	Kovářová	Nad Nuslemi 27/737 66290 Příbram
+147	Zuzana	Holásková	Do Vršku 35/612 559 15 Jablonec nad Nisou
+148	Jaroslav	Řezaninová	Široká 15/353 933 54 Litoměřice
+149	David	Štanglerová	Radbuzská 8 70129 Kolín
+150	Leoš	Kurš	Mečíková 6/442 911 12 Karlovy Vary
+151	Zdeněk	Šilar	U Silnice 2/332 406 36 Hradec Králové
+152	Alena	Kloud	Antonínská 9 89334 Vsetín
+153	Ivana	Rybárová	U Kamýku 17868 Liberec
+154	Žaneta	Svoboda	K Návsi 98/33 256 37 Ostrava
+155	Táňa	Slavík	Ruzyňská 77/393 14949 Jihlava
+156	Vladislav	Brunclíková	Široká 15/353 933 54 Litoměřice
+157	Iva	Pospíšek	Mečíková 6/442 911 12 Karlovy Vary
+158	Martin	Hubička	Kaňkova 8/92 45880 Děčín
+159	Zdeňka	Rybárová	Kaňkova 8/92 45880 Děčín
+160	Pavel	Pavelková	Na Úbočí 48/58 24216 Prostějov
+161	Monika	Wimmer	U Silnice 2/332 406 36 Hradec Králové
+162	Ján	Žaludová	Hrachovská 82 Karlovarský kraj 91899 Děčín
+163	Martin	Matochová	Mečíková 6/442 911 12 Karlovy Vary
+164	Renata	Stojka	U Kamýku 17868 Liberec
+165	Vladimír	Hénik	Nad Nuslemi 27/737 66290 Příbram
+166	David	Wimmer	U Silnice 2/332 406 36 Hradec Králové
+167	Anna	Řezaninová	K Návsi 98/33 256 37 Ostrava
+168	Jarmila	Dobrovolná	Na Úbočí 48/58 24216 Prostějov
+169	Zuzana	Hora	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+170	Šárka	Látal	U Silnice 2/332 406 36 Hradec Králové
+171	Veronika	Hénik	Mečíková 6/442 911 12 Karlovy Vary
+172	Helena	Hlobilová	Do Vršku 35/612 559 15 Jablonec nad Nisou
+173	Iveta	Štanglerová	Stadionová 681 53 Litoměřice
+174	Radim	Tůmová	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+175	Věra	Matochová	Kaňkova 8/92 45880 Děčín
+176	Miluše	Vančo	Nad Klikovkou 287 29 Sokolov
+177	Jarmila	Kučera	Nad Nuslemi 27/737 66290 Příbram
+178	Arnošt	Katona	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+179	Vladislav	Svoboda	Radbuzská 8 70129 Kolín
+180	Ivana	Žák	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+181	Andrea	Šusta	Nad Nuslemi 27/737 66290 Příbram
+182	Tomáš	Zhejbal	Na Úbočí 48/58 24216 Prostějov
+183	Anežka	Štanglerová	Rozkošného 9 06003 Děčín
+184	Jan	Literová	Hrachovská 82 Karlovarský kraj 91899 Děčín
+185	Zlata	Brichová	Za Pekárnou 75 676 57 Frýdek-Místek Česká republika
+186	Zdeněk	Šturmová	Ruzyňská 77/393 14949 Jihlava
+187	Miloslava	Kovářová	Kaňkova 8/92 45880 Děčín
+188	Jarmila	Hůlková	Antonínská 9 89334 Vsetín
+189	Helena	Matochová	U Silnice 2/332 406 36 Hradec Králové
+190	Monika	Skopečková	U Silnice 9/413 719 38 Kroměříž
+191	Iveta	Kovářová	K Návsi 98/33 256 37 Ostrava
+192	Vlasta	Kotorová	N. A. Někrasova 430 50 Tábor
+193	Dana	Cukerová	U Kamýku 7/95 Jihomoravský kraj 95727 Jihlava
+194	Jana	Toman	Na Jezerce 59956 Vsetín
+195	Anna	Humlová	K Návsi 98/33 256 37 Ostrava
+196	Michaela	Majerová	Školní 17/31 Karlovarský kraj 381 58 Prostějov
+197	Dana	Matochová	Nad Nuslemi 27/737 66290 Příbram
+198	Marek	Hanušová	Otavova Olomoucký kraj 143 37 Frýdek-Místek
+199	Monika	Šturmová	Kaňkova 8/92 45880 Děčín
+200	Anežka	Cukerová	Ruzyňská 77/393 14949 Jihlava
+\.
+
+
+--
+-- Name: kurz_id_kurz_seq; Type: SEQUENCE SET; Schema: public; Owner: dev
+--
+
+SELECT pg_catalog.setval('public.kurz_id_kurz_seq', 74, true);
+
+
+--
+-- Name: lektor_id_lektor_seq; Type: SEQUENCE SET; Schema: public; Owner: dev
+--
+
+SELECT pg_catalog.setval('public.lektor_id_lektor_seq', 22, true);
+
+
+--
+-- Name: sablona_id_sablona_seq; Type: SEQUENCE SET; Schema: public; Owner: dev
+--
+
+SELECT pg_catalog.setval('public.sablona_id_sablona_seq', 11, true);
+
+
+--
+-- Name: stav_k_id_stav_seq; Type: SEQUENCE SET; Schema: public; Owner: dev
+--
+
+SELECT pg_catalog.setval('public.stav_k_id_stav_seq', 3, true);
+
+
+--
+-- Name: zajemce_id_zajemce_seq; Type: SEQUENCE SET; Schema: public; Owner: dev
+--
+
+SELECT pg_catalog.setval('public.zajemce_id_zajemce_seq', 200, true);
+
+
+--
+-- Name: kurz kurz_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.kurz
+    ADD CONSTRAINT kurz_pkey PRIMARY KEY (id_kurz);
+
+
+--
+-- Name: lektor lektor_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.lektor
+    ADD CONSTRAINT lektor_pkey PRIMARY KEY (id_lektor);
+
+
+--
+-- Name: sablona sablona_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.sablona
+    ADD CONSTRAINT sablona_pkey PRIMARY KEY (id_sablona);
+
+
+--
+-- Name: stav_k stav_k_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.stav_k
+    ADD CONSTRAINT stav_k_pkey PRIMARY KEY (id_stav);
+
+
+--
+-- Name: zajemce uq_customer; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.zajemce
+    ADD CONSTRAINT uq_customer UNIQUE (jmeno, prijmeni, adresa);
+
+
+--
+-- Name: kompetence uq_lektor_sablona; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.kompetence
+    ADD CONSTRAINT uq_lektor_sablona UNIQUE (lektor_id, sablona_id);
+
+
+--
+-- Name: rezervace uq_reservation; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.rezervace
+    ADD CONSTRAINT uq_reservation UNIQUE (zajemce_id, kurz_id, datum);
+
+
+--
+-- Name: ucast uq_zajemce_kurz; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.ucast
+    ADD CONSTRAINT uq_zajemce_kurz UNIQUE (zajemce_id, kurz_id);
+
+
+--
+-- Name: zajemce zajemce_pkey; Type: CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.zajemce
+    ADD CONSTRAINT zajemce_pkey PRIMARY KEY (id_zajemce);
+
+
+--
+-- Name: kurz fk_akreditace; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.kurz
+    ADD CONSTRAINT fk_akreditace FOREIGN KEY (sablona_id) REFERENCES public.sablona(id_sablona) ON DELETE SET DEFAULT;
+
+
+--
+-- Name: kompetence fk_akreditace; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.kompetence
+    ADD CONSTRAINT fk_akreditace FOREIGN KEY (sablona_id) REFERENCES public.sablona(id_sablona) ON DELETE CASCADE;
+
+
+--
+-- Name: rezervace fk_kurz; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.rezervace
+    ADD CONSTRAINT fk_kurz FOREIGN KEY (kurz_id) REFERENCES public.kurz(id_kurz) ON DELETE CASCADE;
+
+
+--
+-- Name: ucast fk_kurz; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.ucast
+    ADD CONSTRAINT fk_kurz FOREIGN KEY (kurz_id) REFERENCES public.kurz(id_kurz) ON DELETE RESTRICT;
+
+
+--
+-- Name: kurz fk_lektor; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.kurz
+    ADD CONSTRAINT fk_lektor FOREIGN KEY (lektor_id) REFERENCES public.lektor(id_lektor) ON DELETE SET DEFAULT;
+
+
+--
+-- Name: kompetence fk_lektor; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.kompetence
+    ADD CONSTRAINT fk_lektor FOREIGN KEY (lektor_id) REFERENCES public.lektor(id_lektor) ON DELETE CASCADE;
+
+
+--
+-- Name: kurz fk_stav; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.kurz
+    ADD CONSTRAINT fk_stav FOREIGN KEY (stav_id) REFERENCES public.stav_k(id_stav) ON DELETE RESTRICT;
+
+
+--
+-- Name: rezervace fk_zajemce; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.rezervace
+    ADD CONSTRAINT fk_zajemce FOREIGN KEY (zajemce_id) REFERENCES public.zajemce(id_zajemce) ON DELETE CASCADE;
+
+
+--
+-- Name: ucast fk_zajemce; Type: FK CONSTRAINT; Schema: public; Owner: dev
+--
+
+ALTER TABLE ONLY public.ucast
+    ADD CONSTRAINT fk_zajemce FOREIGN KEY (zajemce_id) REFERENCES public.zajemce(id_zajemce) ON DELETE CASCADE;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
